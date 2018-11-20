@@ -175,12 +175,9 @@ class RegistrationData(object):
         cert = x509.load_der_x509_certificate(self.certificate,
                                               default_backend())
         pubkey = cert.public_key()
-        verifier = pubkey.verifier(self.signature, ec.ECDSA(hashes.SHA256()))
-
-        verifier.update(b'\0' + app_param + chal_param + self.key_handle +
-                        self.pub_key)
+        msg = b'\0' + app_param + chal_param + self.key_handle + self.pub_key
         try:
-            verifier.verify()
+            pubkey.verify(self.signature, msg, ec.ECDSA(hashes.SHA256()))
         except InvalidSignature:
             raise ValueError('Attestation signature is invalid')
 
@@ -207,13 +204,10 @@ class SignatureData(object):
     def verify(self, app_param, chal_param, der_pubkey):
         pubkey = load_der_public_key(PUB_KEY_DER_PREFIX + der_pubkey,
                                      default_backend())
-        verifier = pubkey.verifier(self.signature, ec.ECDSA(hashes.SHA256()))
-        verifier.update(app_param +
-                        six.int2byte(self.user_presence) +
-                        struct.pack('>I', self.counter) +
-                        chal_param)
+        msg = app_param + six.int2byte(self.user_presence)
+        msg += struct.pack('>I', self.counter) + chal_param
         try:
-            verifier.verify()
+            pubkey.verify(self.signature, msg, ec.ECDSA(hashes.SHA256()))
         except InvalidSignature:
             raise ValueError('U2F signature is invalid')
 
